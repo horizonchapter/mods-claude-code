@@ -25,6 +25,8 @@ export type Tache = {
   tour?: { debut: number; finA?: number }
   // Claude attend ta réponse depuis cette heure : la liste est en pause, le chrono figé.
   attente?: number
+  // Claude t'a posé une question à cette heure : le son d'attente sonne, liste ou pas.
+  question?: number
   agents: Record<string, Agent>
 }
 

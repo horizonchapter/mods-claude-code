@@ -190,6 +190,7 @@ async function synchroniser($: EngineInterface) {
       [`${ici}:agents`, agentsFinis(x), 'fx/fin.mp3'],
       [`${ici}:tour`, tourFini, 'fx/fin.mp3'],
       [`${ici}:attente`, x.attente ?? 0, 'fx/attente.mp3'],
+      [`${ici}:question`, x.question ?? 0, 'fx/attente.mp3'],
     ] as const) {
       if (quand && sons[cle] !== quand && now - quand < 60_000) {
         sons[cle] = quand
@@ -584,9 +585,10 @@ export const register: Register = on => {
       await modifier($, x => (x.total || (x.tour && !x.tour.finA) ? { ...x, outil: libelle(e.tool) } : x))
     }
 
-    // Une question posée en cours de réponse met aussi la liste en pause.
+    // Une question posée en cours de réponse sonne toujours, et met aussi en pause
+    // une liste pas encore finie.
     const question = !agentId && e.tool === 'AskUserQuestion'
-    if (question) await modifier($, (x, now) => (x.total && !x.finiA ? { ...x, attente: now } : x))
+    if (question) await modifier($, (x, now) => ({ ...x, question: now, attente: x.total && !x.finiA ? now : x.attente }))
     const res = await next(e)
     if (question) await modifier($, (x, now) => reprendre(x, now))
     if (agentId) return res

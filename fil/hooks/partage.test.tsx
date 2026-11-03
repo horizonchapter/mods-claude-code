@@ -201,6 +201,26 @@ test('une réponse qui s’arrête avant la fin de la liste met la barre en paus
   expect(await dessin($)).not.toContain('à toi')
 })
 
+test('une question sonne aussi après une liste finie, ou sans liste', async ($, on) => {
+  const w = monde(on)
+  await demarrer($)
+  await $.turn.start({ text: '', turnId: 't1' } as never)
+  await $.tool.call(plan(['completed', 'completed', 'completed']))
+  expect(w.sons).toEqual(['fx/fin.mp3'])
+  await w.horloge.advance(5_000)
+  await $.tool.call({ tool: 'AskUserQuestion', questions: [] } as never)
+  expect(w.sons).toEqual(['fx/fin.mp3', 'fx/attente.mp3'])
+  // Liste finie : pas de pause ambre.
+  expect(JSON.parse(w.fichiers.get(`${DOSSIER}/A.json`)!.texte).attente).toBeUndefined()
+
+  // Réponse suivante sans liste : la question sonne encore.
+  await $.turn.complete({ answer: 'ok', durationMs: 5_000, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+  await w.horloge.advance(120_000)
+  await $.turn.start({ text: '', turnId: 't2' } as never)
+  await $.tool.call({ tool: 'AskUserQuestion', questions: [] } as never)
+  expect(w.sons.filter(s => s === 'fx/attente.mp3')).toHaveLength(2)
+})
+
 test('un employé qui escalade vers son supérieur est signalé en ambre', async ($, on) => {
   const w = monde(on)
   w.ecrire('A', {
