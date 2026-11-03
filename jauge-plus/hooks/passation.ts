@@ -89,6 +89,18 @@ export const texteComplement = (c: Controle) =>
   `Corrige dans STATE.md ce qu'il a mal compris et complète ce qui manque, à la bonne section, sans rallonger le reste. ` +
   `N'avance pas la tâche et ne modifie aucun autre fichier. Termine ta réponse par exactement : ${FIN_RELAIS}`
 
+// Relances qui gardent le relais automatique au lieu de l'annuler (0.8) : un message de
+// l'utilisateur ou un STATE.md modifié pendant le contrôle, ou une passation qui tarde.
+export const REPRISES_MAX = 2
+export const texteMiseAJour = (messageUtilisateur: boolean) =>
+  (messageUtilisateur
+    ? `Contrôle du relais : l'utilisateur a écrit pendant le relais. Ajoute sa demande, avec ses mots exacts, dans STATE.md (« Demandes de l'utilisateur », et dans « Reprise exacte » si elle change la prochaine action). `
+    : `Contrôle du relais : STATE.md a changé pendant le contrôle. Vérifie qu'il est complet et à jour. `) +
+  `N'avance pas la tâche et ne modifie aucun autre fichier. Termine ta réponse par exactement : ${FIN_RELAIS}`
+export const texteRappel = () =>
+  `Relais en attente : écris maintenant la passation dans STATE.md et DECISIONS.md comme demandé plus haut, sans avancer la tâche. ` +
+  `Termine ta réponse par exactement : ${FIN_RELAIS}`
+
 // Ce que le mod ajoute lui-même quand des points restent flous après les compléments.
 export const notePointsFlous = (manques: string[]) =>
   `\n\n## Points flous signalés au relais\n` +

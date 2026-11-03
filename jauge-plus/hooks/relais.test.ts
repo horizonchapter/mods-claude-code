@@ -259,9 +259,9 @@ test('relais annulé puis relancé : chaque relais garde sa propre sauvegarde', 
   const w = monde(on, PROJET)
   await demarrer($)
   await $.command.run(RELAIS)
-  // Le relais n'aboutit pas (quatre réponses sans « Relais prêt »), STATE.md a déjà été réécrit.
+  // Le relais n'aboutit pas (réponses sans « Relais prêt », même après les rappels), STATE.md a déjà été réécrit.
   w.ecrire('STATE.md', 'réécrit mais incomplet')
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 25; i++) {
     await $.turn.complete(finDeTour('Je travaille encore.'))
     await w.horloge.advance(1000)
   }
@@ -281,7 +281,7 @@ test('double clic : un seul relais', async ($, on) => {
   expect(w.archives('STATE-avant.md')).toHaveLength(1)
 })
 
-test('message tapé pendant le contrôle à froid : on n’efface pas', async ($, on) => {
+test('message tapé pendant le contrôle à froid : inscrit dans STATE.md, puis le relais continue seul', async ($, on) => {
   const w = monde(on, PROJET)
   await demarrer($)
   await $.command.run(RELAIS)
@@ -292,18 +292,45 @@ test('message tapé pendant le contrôle à froid : on n’efface pas', async ($
   await $.turn.start({ text: '', turnId: 'u1' } as never)
   await w.horloge.advance(1500)
 
+  // Pas d'effacement tout de suite, pas d'annulation : on demande d'inscrire ton message.
   expect(w.commandes).not.toContain('clear')
-  expect(w.toasts.join(' ')).toContain('tu as écrit pendant le contrôle')
+  expect(w.toasts.join(' ')).not.toContain('annulé')
+  expect(w.envoyes.at(-1)).toContain("l'utilisateur a écrit pendant le relais")
+
+  // Ta réponse arrive, puis la mise à jour du relais : effacement et reprise, sans toi.
+  await $.turn.complete(finDeTour('Réponse à ta question.'))
+  await tour(w, $, STATE_COMPLET + '\n« ta demande »\n')
+  expect(w.commandes).toContain('clear')
+  expect(w.envoyes.at(-1)).toContain('Reprise après relais')
 })
 
-test('STATE.md modifié pendant le contrôle à froid : on n’efface pas', async ($, on) => {
-  const w = monde(on, PROJET, ['modifie'])
+test('STATE.md modifié pendant le contrôle à froid : revérifié, puis le relais continue seul', async ($, on) => {
+  const w = monde(on, PROJET, ['modifie', `${COMPRIS}<manques>AUCUN</manques>`])
   await demarrer($)
   await $.command.run(RELAIS)
   await tour(w, $, STATE_COMPLET)
 
   expect(w.commandes).not.toContain('clear')
-  expect(w.toasts.join(' ')).toContain('STATE.md a changé pendant le contrôle')
+  expect(w.envoyes.at(-1)).toContain('STATE.md a changé pendant le contrôle')
+
+  await tour(w, $, STATE_COMPLET)
+  expect(w.commandes).toContain('clear')
+})
+
+test('passation qui tarde : rappel automatique au lieu d’annuler', async ($, on) => {
+  const w = monde(on, PROJET)
+  await demarrer($)
+  await $.command.run(RELAIS)
+  await w.horloge.advance(0)
+  for (let i = 0; i < 4; i++) {
+    await $.turn.complete(finDeTour('Je finis l’étape en cours.'))
+    await w.horloge.advance(1000)
+  }
+  expect(w.toasts.join(' ')).not.toContain('annulé')
+  expect(w.envoyes.at(-1)).toContain('Relais en attente')
+
+  await tour(w, $, STATE_COMPLET)
+  expect(w.commandes).toContain('clear')
 })
 
 test('la tâche en cours modifie STATE.md : le relais attend sa propre réponse au lieu d’annuler', async ($, on) => {

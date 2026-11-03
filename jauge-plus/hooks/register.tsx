@@ -11,8 +11,11 @@ import {
   messageControle,
   MODELE_CONTROLE,
   notePointsFlous,
+  REPRISES_MAX,
   SYSTEME_CONTROLE,
   texteComplement,
+  texteMiseAJour,
+  texteRappel,
   texteRelais,
   texteReprise,
   TOURS_MAX,
@@ -283,6 +286,8 @@ async function finirRelais($: EngineInterface, reponse: string, toursAuDepart: n
       await update($, relaisAtom, () => ({ ...relais, attentes: relais.attentes + 1 }))
       return
     }
+    // Toujours automatique : on redemande la passation avant d'abandonner.
+    if (relais.tours < TOURS_MAX + REPRISES_MAX) return redemander($, relais, texteRappel())
     return annuler($, 'la passation n’est pas allée au bout')
   }
   const chemin = `${relais.racine}/STATE.md`
@@ -329,9 +334,12 @@ async function finirRelais($: EngineInterface, reponse: string, toursAuDepart: n
     await $.fs.write(chemin, texte.trimEnd() + notePointsFlous(c.manques))
   }
   const final = await lireTexte($, chemin)
-  if (toursDemarres !== toursAuDepart) return annuler($, 'tu as écrit pendant le contrôle, ton message ne doit pas être effacé')
-  if (final !== (c.manques.length ? texte.trimEnd() + notePointsFlous(c.manques) : texte)) {
-    return annuler($, 'STATE.md a changé pendant le contrôle')
+  const ecritPendant = toursDemarres !== toursAuDepart
+  if (ecritPendant || final !== (c.manques.length ? texte.trimEnd() + notePointsFlous(c.manques) : texte)) {
+    // Ton message n'est jamais perdu : la conversation l'inscrit dans STATE.md, puis on
+    // recontrôle et le relais continue seul (0.8 ; avant, il s'annulait).
+    if (relais.tours < TOURS_MAX + REPRISES_MAX) return redemander($, relais, texteMiseAJour(ecritPendant))
+    return annuler($, ecritPendant ? 'tu as écrit pendant le contrôle, ton message ne doit pas être effacé' : 'STATE.md a changé pendant le contrôle')
   }
 
   try {
