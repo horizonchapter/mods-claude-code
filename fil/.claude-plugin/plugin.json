@@ -1,0 +1,6 @@
+{
+  "name": "fil",
+  "version": "0.11.1",
+  "description": "Barres de progression des tâches en cours, partagées entre sessions, pause quand Claude attend ta réponse, sons de fin et d'attente",
+  "types": "./types/index.d.ts"
+}

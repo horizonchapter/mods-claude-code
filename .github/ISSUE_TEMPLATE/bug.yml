@@ -1,0 +1,23 @@
+name: Bug
+description: Un mod ne se comporte pas comme prévu
+labels: [bug]
+body:
+  - type: dropdown
+    id: mod
+    attributes:
+      label: Quel mod ?
+      options: [Jauge+, Cap, Fil, Plume]
+    validations:
+      required: true
+  - type: textarea
+    id: quoi
+    attributes:
+      label: Que s'est-il passé ?
+      description: Ce que tu as fait, ce que le mod a fait, ce que tu attendais.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environnement
+      placeholder: "Claude Code version, système"

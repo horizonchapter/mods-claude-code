@@ -1,0 +1,13 @@
+{
+  "name": "mods-perso",
+  "owner": { "name": "Horizon Chapter" },
+  "metadata": {
+    "description": "Quatre mods personnels pour Claude Code : jauge et relais, suites cliquables, barres de progression, réécriture de prompt."
+  },
+  "plugins": [
+    { "name": "jauge-plus", "source": "./jauge-plus", "description": "Jauge de contexte, relais STATE.md/DECISIONS.md et budget hebdomadaire" },
+    { "name": "fil", "source": "./fil", "description": "Barres de progression des tâches, partagées entre sessions" },
+    { "name": "cap", "source": "./cap", "description": "Suites cliquables après chaque réponse" },
+    { "name": "plume", "source": "./plume", "description": "Bouton manuel pour améliorer le prompt" }
+  ]
+}

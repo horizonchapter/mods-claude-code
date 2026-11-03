@@ -1,0 +1,11 @@
+node_modules/
+.claude-plugin/types/
+.passations/
+_sauvegardes/
+STATE.md
+DECISIONS.md
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db

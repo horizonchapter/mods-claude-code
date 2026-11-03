@@ -1,0 +1,6 @@
+{
+  "name": "cap",
+  "version": "0.8.0",
+  "description": "Claude enchaîne seul le plan validé ; quand le travail est clairement fini sans suite prévue, propose 3 suites cliquables (rien n'est envoyé sans clic)",
+  "types": "./types/index.d.ts"
+}

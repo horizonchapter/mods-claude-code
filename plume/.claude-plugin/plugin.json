@@ -1,0 +1,6 @@
+{
+  "name": "plume",
+  "version": "0.5.0",
+  "description": "Bouton manuel : réécrit ta dictée (fautes, ordre des idées, structure) avec Sonnet, sans rien inventer",
+  "types": "./types/index.d.ts"
+}

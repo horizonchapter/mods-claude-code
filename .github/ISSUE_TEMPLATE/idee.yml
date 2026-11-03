@@ -1,0 +1,11 @@
+name: Idée
+description: Une amélioration ou un nouveau mod
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idee
+    attributes:
+      label: Ton idée
+      description: À quoi ça servirait ?
+    validations:
+      required: true
