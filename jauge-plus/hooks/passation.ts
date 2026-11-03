@@ -108,6 +108,11 @@ export const notePointsFlous = (manques: string[]) =>
   manques.map(x => `- ${x}`).join('\n') +
   '\n'
 
+// L'app de bureau garde l'ancien chat à l'écran après /clear, boutons compris : cette ligne
+// marque la limite. Elle n'est pas envoyée au modèle.
+export const LIGNE_CHAT_VIDE =
+  "Chat vidé. Tout ce qui est au-dessus est l'ancien chat : Claude ne le voit plus, n'utilise plus ses boutons."
+
 export const texteReprise = (racine: string) =>
   `Reprise après relais : la conversation précédente a été effacée volontairement, tout ce qu'il faut savoir est dans les fichiers.\n` +
   `1. Lis ${racine}/STATE.md en entier, puis la fin de ${racine}/DECISIONS.md.\n` +

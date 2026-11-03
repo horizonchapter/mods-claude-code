@@ -6,6 +6,7 @@ import type { Controle } from './passation'
 import {
   defautsMecaniques,
   FIN_RELAIS,
+  LIGNE_CHAT_VIDE,
   finDecisions,
   lireControle,
   messageControle,
@@ -356,6 +357,8 @@ async function finirRelais($: EngineInterface, reponse: string, toursAuDepart: n
     $.ui.toast('Passation écrite et vérifiée. Lance /clear puis « lis STATE.md et reprends » pour repartir à neuf.', { timeoutMs: 12000 })
     return
   }
+  // Le clear lancé ici ne repasse pas par le hook command.run du mod : la ligne est ajoutée ici.
+  $.ui.log(LIGNE_CHAT_VIDE)
   await update($, phase, () => 'repos' as Phase).catch(() => undefined)
   await update($, relaisAtom, () => null).catch(() => undefined)
   try {
@@ -437,6 +440,13 @@ export const register: Register = on => {
       )
     }
     return res
+  })
+
+  // Après chaque /clear (le tien ou celui du relais), une ligne sépare l'ancien chat du nouveau.
+  on('command.run', { command: 'clear' }, async ($, e, next) => {
+    const r = await next(e)
+    $.ui.log(LIGNE_CHAT_VIDE)
+    return r
   })
 
   on('command.run', { command: 'jauge' }, async ($, e) => {

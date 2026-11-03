@@ -29,6 +29,7 @@ function monde(on: On, racineDepart: string, controles: string[] = [`${COMPRIS}<
   const commandes: string[] = []
   const toasts: string[] = []
   const lus: string[] = []
+  const lignes: string[] = []
 
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('command.register', (_, e) => ({ value: { command: e.name } }))
@@ -53,6 +54,10 @@ function monde(on: On, racineDepart: string, controles: string[] = [`${COMPRIS}<
   })
   on('ui.toast', (_, e) => {
     toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.log', (_, e) => {
+    lignes.push(e.text)
     return { value: undefined }
   })
   on('ui.status', () => ({ value: undefined }) as never)
@@ -84,7 +89,7 @@ function monde(on: On, racineDepart: string, controles: string[] = [`${COMPRIS}<
   // Un vrai dossier projet a déjà son STATE.md.
   if (!/scratch-workspaces/.test(racine)) ecrire('STATE.md', '## Objectif\nancienne version')
   const changerRacine = (r: string) => (racine = r)
-  return { horloge, fichiers, envoyes, commandes, toasts, lus, ecrire, archive, archives, changerRacine }
+  return { horloge, fichiers, envoyes, commandes, toasts, lus, lignes, ecrire, archive, archives, changerRacine }
 }
 
 // Comme si l'utilisateur tapait « /jauge relais ».
@@ -125,6 +130,7 @@ test('relais complet : sauvegarde, récap détaillé, contrôle à froid, conver
   expect(w.lus[0]).toContain('Shopify')
   expect(w.fichiers.get(w.archive('controle.md')!)?.texte).toContain('Aucun')
   expect(w.commandes).toContain('clear')
+  expect(w.lignes.some(l => l.startsWith('Chat vidé.'))).toBe(true)
   expect(w.envoyes).toHaveLength(2)
   expect(w.envoyes[1]).toContain('Reprise après relais')
   expect(w.envoyes[1]).toContain("vérifie l'état réel")
@@ -380,4 +386,13 @@ test('contrôle de structure : sections obligatoires, section vide, 180 lignes a
 
 test('« - AUCUN » veut dire qu’il ne manque rien', () => {
   expect(lireControle(`${COMPRIS}<manques>\n- AUCUN\n</manques>`)?.manques).toEqual([])
+})
+
+test("/clear tapé à la main : une ligne sépare l'ancien chat du nouveau", async ($, on) => {
+  const w = monde(on, PROJET)
+  await demarrer($)
+  await $.command.run({ command: 'clear', args: '', origin: { kind: 'composer' }, presentation: { layout: 'main', columns: 80 } } as never)
+  expect(w.commandes).toContain('clear')
+  expect(w.lignes).toHaveLength(1)
+  expect(w.lignes[0]).toContain("n'utilise plus ses boutons")
 })

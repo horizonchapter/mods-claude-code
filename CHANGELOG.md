@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.3 : 2026-11-03
+- Jauge+ `0.9.0` : après chaque `/clear` (le tien ou celui du relais), une ligne « Chat vidé » sépare l'ancien chat du nouveau. L'app de bureau garde l'ancien chat et ses boutons à l'écran ; la ligne n'est pas envoyée au modèle.
+
 ## 1.0.2 : 2026-11-03
 - Jauge+ `0.8.0` : le relais reste automatique. Si tu écris pendant le relais ou si STATE.md change pendant le contrôle, ta demande est inscrite dans STATE.md, le contrôle est refait et le relais continue (avant, il s'annulait). Une passation qui tarde est relancée, deux fois au maximum.
 
