@@ -16,6 +16,7 @@ type Options = {
   surfaces?: string[] // ce que $.session.surfaces renvoie
   clic?: string // l'option cliquée dans le dialogue (sinon il est fermé)
   lenteur?: number // durée de l'appel à Haiku, en ms
+  question?: boolean // question de fin allumée (/cap question on) ; vrai par défaut dans ces tests
 }
 
 // verdict : ce que Haiku répond.
@@ -24,6 +25,7 @@ function monde(on: On, verdict: string, o: Options = {}) {
   const dialogues: string[][] = []
   const appels = { haiku: 0 }
   on('session.root', () => ({ value: 'C:/Users/moi/Desktop/Projets/01-business' }))
+  on('store.get', (_, e) => ({ value: e.key === 'question' ? (o.question ?? true) : undefined }))
   on('session.surfaces', () => ({ value: o.surfaces ?? ['terminal'] }) as never)
   on('fs.exists', () => ({ value: false }))
   const agents = o.agents ?? []
@@ -172,4 +174,17 @@ test('un nouveau tour commence pendant que Haiku réfléchit : pas de dialogue p
   await $.turn.start({ text: '', turnId: 't2' })
   await pause(60)
   expect(w.dialogues).toHaveLength(0)
+})
+
+test('question de fin désactivée (réglage par défaut) : ni Haiku ni dialogue', async ($, on) => {
+  const w = monde(on, VERDICT_FIN, { question: false })
+  await fin($)
+  expect(w.appels.haiku).toBe(0)
+  expect(w.dialogues).toHaveLength(0)
+})
+
+test('la consigne autorise la reprise sans accord après un relais de Jauge+', async ($, on) => {
+  monde(on, 'RIEN')
+  const cap = (await compose($)).sections.find(s => s.id === 'cap:enchainer')
+  expect(cap?.text).toContain('Reprise après relais')
 })

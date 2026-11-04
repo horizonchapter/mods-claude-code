@@ -2,7 +2,8 @@ import type { EngineInterface, PromptOrigin, Register } from 'claude-code'
 
 // Cap : quand Claude sait quoi faire ensuite (plan validé dans la conversation), il enchaîne
 // seul, dans la même réponse (consigne ajoutée à ses instructions).
-// Par défaut, Cap ne montre rien. Il ouvre « Et maintenant, on fait quoi ? » seulement quand la
+// Question de fin (« Et maintenant, on fait quoi ? ») : DÉSACTIVÉE par défaut depuis 0.9
+// (/cap question on pour la rallumer). Quand elle est allumée, Cap ne montre rien sauf : il ouvre « Et maintenant, on fait quoi ? » seulement quand la
 // réponse termine clairement le travail sans suite prévue : pas d'étape annoncée, pas de travail
 // en cours ou en attente (sous-agent, liste de tâches), pas de question. Dans le doute, rien.
 // Rien n'est envoyé sans clic. Lit la réponse de Claude et la « Prochaine action » de STATE.md,
@@ -13,7 +14,8 @@ const CONSIGNE =
   "Enchaînement (mod Cap) : quand la suite fait partie du plan validé avec l'utilisateur dans cette conversation, " +
   "enchaîne-la toi-même dans la même réponse, sans t'arrêter pour l'annoncer et sans demander « Veux-tu que je " +
   "continue ? » pour une étape déjà décidée. Ne reprends pas de toi-même la « Prochaine action » de STATE.md : " +
-  "seulement si l'utilisateur a demandé de reprendre. Demande toujours avant une action irréversible ou vers " +
+  "seulement si l'utilisateur a demandé de reprendre, ou après un relais de Jauge+ (« Reprise après relais ») : " +
+  "l'utilisateur a demandé que la tâche continue alors sans attendre son accord. Demande toujours avant une action irréversible ou vers " +
   "l'extérieur (push, déploiement, publication, envoi, installation, paiement, suppression ou écrasement sans " +
   "sauvegarde). Arrête-toi aussi pour un choix qui revient à l'utilisateur, une information qui te manque, " +
   "l'attente d'un travail en arrière-plan, ou quand tout ce qui était prévu est fait. Si un point d'ajustement " +
@@ -66,7 +68,17 @@ async function travailEnCours($: EngineInterface) {
 const venantDunMod = (o: PromptOrigin) => o.kind === 'plugin' && !o.asUser
 
 // `aJour` : faux dès que la conversation a bougé ; on abandonne alors sans rien montrer ni envoyer.
+// La question de fin est-elle allumée ? Non par défaut (demande de l'utilisateur, 2026-11-04).
+async function questionActive($: EngineInterface) {
+  try {
+    return (await $.store.get('question')) === true
+  } catch {
+    return false
+  }
+}
+
 async function proposer($: EngineInterface, reponse: string, aJour: () => boolean, signal: AbortSignal) {
+  if (!(await questionActive($))) return // question de fin désactivée : aucun appel à Haiku
   if ((await $.session.surfaces()).length === 0) return // personne pour cliquer
   if (await travailEnCours($)) return
   const action = await lireProchaineAction($).catch(() => '')
@@ -119,6 +131,21 @@ export const register: Register = on => {
     activite++
     arret?.abort() // coupe l'appel à Haiku en cours
   }
+
+  on('session.start', async ($, e, next) => {
+    await $.command.register({ name: 'cap', description: 'Cap : question de fin « Et maintenant, on fait quoi ? » (/cap question on|off)' })
+    return next(e)
+  })
+
+  on('command.run', { command: 'cap' }, async ($, e) => {
+    const [cmd = '', a = ''] = e.args.trim().split(/\s+/)
+    if (cmd === 'question' && (a === 'on' || a === 'off')) {
+      await $.store.set('question', a === 'on')
+      return { text: a === 'on' ? 'Question de fin allumée.' : 'Question de fin désactivée.' }
+    }
+    const actif = await questionActive($)
+    return { text: `Cap — question de fin ${actif ? 'allumée' : 'désactivée'}. /cap question on · /cap question off` }
+  })
 
   on('prompt.compose', async ($, e, next) => {
     const r = await next(e)

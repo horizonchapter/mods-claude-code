@@ -172,6 +172,45 @@ async function lireTexte($: EngineInterface, chemin: string) {
 let verrou = false
 // Réponses de la conversation commencées depuis le chargement (sans lire leur texte).
 let toursDemarres = 0
+// Heure du dernier chat vidé par le relais : pas de relais spontané juste après (pas de boucle).
+let dernierRelais = 0
+// « Relais prêt » écrit seul par Claude (procédure de CLAUDE.md, « fin de session »…) : on finit
+// le relais sans clic (0.10). La phrase doit ouvrir une ligne, pas être citée dans le texte.
+const RELAIS_SPONTANE = /(^|\n)[\s*_>#-]*Relais prêt(?![\p{L}])/u
+const FRAICHEUR = 30 * 60_000
+const APRES_RELAIS = 5 * 60_000
+
+// Claude a déjà écrit la passation et fini par « Relais prêt » sans que le mod l'ait demandée :
+// même contrôle à froid, puis chat vidé et reprise, sans que l'utilisateur reclique.
+async function relaisSpontane($: EngineInterface, reponse: string, tours: number) {
+  if (verrou || (await read($, phase)) !== 'repos') return
+  const maintenant = await $.clock.now()
+  if (maintenant - dernierRelais < APRES_RELAIS) return
+  const racine = await $.session.root()
+  if (/scratch-workspaces/i.test(racine)) return
+  const chemin = `${racine}/STATE.md`
+  if (!(await $.fs.exists(chemin))) return
+  // STATE.md doit avoir été réécrit récemment : sinon ce n'est pas une passation.
+  if ((await $.fs.stat(chemin)).mtimeMs < maintenant - FRAICHEUR) return
+  verrou = true
+  try {
+    const archive = await dossierNeuf($, `${racine}/.passations/${horodatage(maintenant)}`)
+    try {
+      await archiver($, racine, archive, 'STATE.md', '-avant')
+      await archiver($, racine, archive, 'DECISIONS.md', '-avant')
+    } catch {
+      $.ui.toast('Relais automatique annulé : la sauvegarde de STATE.md a échoué. Rien n’a été touché.', { timeoutMs: 10000 })
+      return
+    }
+    const decisionsAvant = await lireTexte($, `${racine}/DECISIONS.md`)
+    await update($, relaisAtom, () => ({ debut: maintenant - FRAICHEUR, racine, archive, tours: 0, attentes: 0, decisionsAvant }))
+    await update($, phase, () => 'ecriture' as Phase)
+  } finally {
+    verrou = false
+  }
+  $.ui.toast('Relais prêt : contrôle de la passation, puis chat neuf et reprise automatique.', { timeoutMs: 8000 })
+  await finirRelais($, reponse, tours)
+}
 
 // Relance un relais. Renvoie ce qui s'est passé, pour /jauge relais.
 async function lancerRelais($: EngineInterface): Promise<string> {
@@ -359,6 +398,7 @@ async function finirRelais($: EngineInterface, reponse: string, toursAuDepart: n
   }
   // Le clear lancé ici ne repasse pas par le hook command.run du mod : la ligne est ajoutée ici.
   $.ui.log(LIGNE_CHAT_VIDE)
+  dernierRelais = await $.clock.now()
   await update($, phase, () => 'repos' as Phase).catch(() => undefined)
   await update($, relaisAtom, () => null).catch(() => undefined)
   try {
@@ -431,7 +471,15 @@ export const register: Register = on => {
     const res = await next(e)
     if (e.agentId) return res
     await update($, dernierEchange, () => Date.now())
-    if ((await read($, phase)) === 'ecriture') {
+    const etat = await read($, phase)
+    if (etat === 'repos' && e.reason === 'answer' && !e.isAborted && RELAIS_SPONTANE.test(e.answer)) {
+      const reponse = e.answer
+      const tours = toursDemarres
+      $.clock.after(1000, () =>
+        void relaisSpontane($, reponse, tours).catch(err => annuler($, `erreur inattendue (${err instanceof Error ? err.message : String(err)})`).catch(() => undefined)),
+      )
+    }
+    if (etat === 'ecriture') {
       const reponse = e.answer
       const tours = toursDemarres
       // Aucune erreur n'est silencieuse : le relais s'arrête et le dit, sans rien effacer.

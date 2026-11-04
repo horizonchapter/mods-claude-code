@@ -22,8 +22,8 @@ Ces mods sont inspirés du travail de Tony Lotis.
 
 | Mod | Ce qu'il fait |
 |---|---|
-| **Jauge+** `0.9.0` | Jauge de contexte au-dessus de la zone de saisie, budget d'usage de la semaine, et **relais** : quand le contexte se remplit, Claude écrit une passation dans `STATE.md` et `DECISIONS.md`, la fait relire à froid, puis vide le chat et reprend tout seul. Rien n'est effacé si la relecture échoue. |
-| **Cap** `0.8.0` | Quand une réponse termine le travail sans suite prévue, propose 3 suites cliquables. Rien n'est envoyé sans ton clic. Reste silencieux si une étape est annoncée, si un sous-agent tourne, si une liste de tâches est ouverte ou si Claude pose une question. |
+| **Jauge+** `0.10.0` | Jauge de contexte au-dessus de la zone de saisie, budget d'usage de la semaine, et **relais** : quand le contexte se remplit, Claude écrit une passation dans `STATE.md` et `DECISIONS.md`, la fait relire à froid, puis vide le chat et reprend tout seul, sans attendre ton accord. Le relais part aussi quand Claude écrit « Relais prêt » en fin de passation. Rien n'est effacé si la relecture échoue. |
+| **Cap** `0.9.0` | Désactivé par défaut (`/cap question on` pour l'allumer). Allumé : quand une réponse termine le travail sans suite prévue, propose 3 suites cliquables. Rien n'est envoyé sans ton clic. Reste silencieux si une étape est annoncée, si un sous-agent tourne, si une liste de tâches est ouverte ou si Claude pose une question. |
 | **Fil** `0.11.2` | Une barre de progression par conversation (liste de tâches, réponse en cours, sous-agents), partagées entre toutes tes conversations. Elle avance en continu, avec le temps dans une bulle colorée et un temps restant estimé dès le départ. Quand Claude s'arrête pour attendre ta réponse, la barre passe en pause (ambre, « à toi », chrono figé), et toute question de Claude sonne, même une fois la liste finie. Un bip à la fin, un double signal en pause (sons CC0 de Freesound, joués aussi sous Windows). `/fil vider` efface les barres terminées, `/fil son` teste le son. |
 | **Plume** `0.5.0` | Un bouton qui réécrit ta dictée (fautes, ordre des idées, structure) avec Sonnet, sans rien inventer. Code, liens et chemins sont protégés ; si la réponse est coupée, ton texte reste intact. |
 
@@ -79,7 +79,7 @@ Pour désactiver un mod : `claude plugin disable <mod>@mods-perso`.
 | Mod | Comment l'utiliser |
 |---|---|
 | **Jauge+** | `/jauge relais` lance le relais maintenant (ou clique sur « Passer le relais »). `/jauge seuil 55` change le seuil (60 % par défaut). `/jauge auto off` remplace le relais automatique par un simple rappel, `/jauge auto on` le réactive. `/jauge masquer` et `/jauge afficher` cachent ou montrent la jauge sans arrêter la mesure. `/jauge aide` rappelle tout. |
-| **Cap** | Rien à faire : les trois suites cliquables apparaissent quand une réponse se termine sans suite prévue. |
+| **Cap** | `/cap question on` allume la question de fin « Et maintenant, on fait quoi ? » et ses trois suites cliquables ; `/cap question off` l'éteint (par défaut). |
 | **Fil** | Rien à faire : une barre par conversation. `/fil vider` efface les barres terminées, `/fil son` teste le son. |
 | **Plume** | Écris ou dicte ton message, puis clique sur « Améliorer le prompt ». Le texte est réécrit dans le champ de saisie, tu relis avant d'envoyer. |
 

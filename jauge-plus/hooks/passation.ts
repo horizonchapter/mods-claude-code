@@ -16,7 +16,8 @@ export const REPERES = [
   'Prochaine action',
   'Ne pas refaire',
   '## Objectif',
-  "## Demandes de l'utilisateur",
+  // « ## Demandes de l'utilisateur » (consigne du mod) ou « ## Demandes ouvertes » (CLAUDE.md de l'AIOS).
+  '## Demandes',
   '## Décidé',
   '## Pièges déjà rencontrés',
   '## Attend une validation',
@@ -113,14 +114,21 @@ export const notePointsFlous = (manques: string[]) =>
 export const LIGNE_CHAT_VIDE =
   "Chat vidé. Tout ce qui est au-dessus est l'ancien chat : Claude ne le voit plus, n'utilise plus ses boutons."
 
+// Reprise sans attendre l'utilisateur (0.10, demande du 2026-11-04 : « il continue où il en
+// était, il n'attend pas ma confirmation »).
 export const texteReprise = (racine: string) =>
-  `Reprise après relais : la conversation précédente a été effacée volontairement, tout ce qu'il faut savoir est dans les fichiers.\n` +
+  `Reprise après relais : la conversation précédente a été effacée volontairement, tout ce qu'il faut savoir est dans les fichiers. ` +
+  `L'utilisateur a demandé que la reprise soit automatique : continue la tâche tout de suite, sans attendre son accord, sans lui demander s'il faut continuer et sans proposer de choix. ` +
+  `Pour cette reprise, la règle « Démarrage en un mot … attends mon OK » de CLAUDE.md ne s'applique pas.\n` +
   `1. Lis ${racine}/STATE.md en entier, puis la fin de ${racine}/DECISIONS.md.\n` +
   `2. Avant de modifier quoi que ce soit, vérifie l'état réel : les fichiers de « Fichiers touchés » existent et sont dans l'état décrit (relis les passages concernés) ; ` +
-  `relance la vérification indiquée si elle n'a aucun effet de bord. Si l'état réel contredit STATE.md, dis-le et fie-toi à l'état réel.\n` +
+  `relance la vérification indiquée si elle n'a aucun effet de bord. Si l'état réel contredit STATE.md, dis-le en une ligne et fie-toi à l'état réel.\n` +
   `3. Si STATE.md contient un plan, recrée ta liste de tâches à l'identique (étapes faites cochées, étape en cours en cours).\n` +
-  `4. Écris 3 lignes : où on en est, ce qui vient d'être fait, la prochaine action exacte. Traite d'abord les « Points flous signalés au relais » s'il y en a.\n` +
-  `5. Puis continue à partir de la prochaine action, sans refaire ce qui est dans « Ne pas refaire », sauf si elle figure dans « Attend une validation » : dans ce cas, demande l'accord.`
+  `4. Écris une ligne : où on en est et la prochaine action. Règle d'abord toi-même les « Points flous signalés au relais » à partir des fichiers.\n` +
+  `5. Puis enchaîne directement la prochaine action et les suivantes du plan, sans refaire ce qui est dans « Ne pas refaire ». ` +
+  `Arrête-toi seulement pour une action de « Attend une validation » ou irréversible / vers l'extérieur (push, publication, envoi, paiement, installation, suppression), ` +
+  `ou si la prochaine action est d'attendre un message de l'utilisateur : dans ce cas dis-le en une ligne et arrête-toi, sans question.\n` +
+  `6. Ne refais pas de passation et n'écris pas « ${FIN_RELAIS} » dans cette reprise.`
 
 // Contrôle mécanique : ce qui doit être vrai avant même de lire le contenu.
 export function defautsMecaniques(texte: string): string | undefined {

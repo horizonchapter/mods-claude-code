@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 : 2026-11-04
+- Jauge+ `0.10.0` : un « Relais prêt » écrit par Claude en fin de passation lance seul le contrôle, le vidage du chat et la reprise ; la reprise enchaîne la tâche sans attendre ton accord ; la section « Demandes ouvertes » est acceptée.
+- Cap `0.9.0` : la question de fin « Et maintenant, on fait quoi ? » est désactivée par défaut et se rallume avec `/cap question on`.
+
 ## 1.0.3 : 2026-11-03
 - Jauge+ `0.9.0` : après chaque `/clear` (le tien ou celui du relais), une ligne « Chat vidé » sépare l'ancien chat du nouveau. L'app de bureau garde l'ancien chat et ses boutons à l'écran ; la ligne n'est pas envoyée au modèle.
 

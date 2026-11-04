@@ -396,3 +396,53 @@ test("/clear tapé à la main : une ligne sépare l'ancien chat du nouveau", asy
   expect(w.lignes).toHaveLength(1)
   expect(w.lignes[0]).toContain("n'utilise plus ses boutons")
 })
+
+// 0.10 : Claude a écrit la passation de lui-même (procédure de CLAUDE.md) et fini par « Relais prêt ».
+const STATE_AIOS = STATE_COMPLET.replace("## Demandes de l'utilisateur", '## Demandes ouvertes')
+
+test('« Relais prêt » écrit seul par Claude : contrôle, chat vidé et reprise sans clic ni accord', async ($, on) => {
+  const w = monde(on, PROJET)
+  w.ecrire('DECISIONS.md', '2026-11-01 — Shopify — déjà payé')
+  await demarrer($)
+  await w.horloge.advance(3000)
+  w.ecrire('STATE.md', STATE_AIOS)
+  await $.turn.complete(finDeTour('STATE.md et DECISIONS.md à jour.\n\nRelais prêt. Pour reprendre, ouvre une nouvelle session.'))
+  await w.horloge.advance(1500)
+  expect(w.lus).toHaveLength(1)
+  expect(w.commandes).toContain('clear')
+  expect(w.archive('STATE-avant.md')).toBeDefined()
+  expect(w.envoyes).toHaveLength(1)
+  expect(w.envoyes[0]).toContain('Reprise après relais')
+  expect(w.envoyes[0]).toContain('sans attendre son accord')
+  expect(w.envoyes[0]).toContain('ne s\'applique pas')
+})
+
+test('« Relais prêt » cité dans une phrase, ou STATE.md ancien : rien ne se passe', async ($, on) => {
+  const w = monde(on, PROJET)
+  await demarrer($)
+  await w.horloge.advance(3000)
+  w.ecrire('STATE.md', STATE_AIOS)
+  await $.turn.complete(finDeTour('Le mod attend la phrase « Relais prêt » en fin de réponse.'))
+  await w.horloge.advance(1500)
+  expect(w.commandes).not.toContain('clear')
+  // STATE.md réécrit il y a plus de 30 min : ce n'est pas une passation.
+  await w.horloge.advance(31 * 60_000)
+  await $.turn.complete(finDeTour('Fini.\nRelais prêt'))
+  await w.horloge.advance(1500)
+  expect(w.commandes).not.toContain('clear')
+  expect(w.envoyes).toHaveLength(0)
+})
+
+test('juste après un relais, un nouveau « Relais prêt » ne vide pas le chat une 2e fois', async ($, on) => {
+  const w = monde(on, PROJET)
+  await demarrer($)
+  await w.horloge.advance(3000)
+  w.ecrire('STATE.md', STATE_AIOS)
+  await $.turn.complete(finDeTour('Relais prêt'))
+  await w.horloge.advance(1500)
+  expect(w.commandes.filter(c => c === 'clear')).toHaveLength(1)
+  w.ecrire('STATE.md', STATE_AIOS + '\n')
+  await $.turn.complete(finDeTour('Relais prêt'))
+  await w.horloge.advance(1500)
+  expect(w.commandes.filter(c => c === 'clear')).toHaveLength(1)
+})
