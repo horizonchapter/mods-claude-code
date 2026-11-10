@@ -1,6 +1,6 @@
 {
   "name": "jauge-plus",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Jauge de contexte, relais vers STATE.md/DECISIONS.md et budget hebdomadaire d'usage",
   "types": "./types/index.d.ts"
 }

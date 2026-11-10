@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5 : 2026-11-10
+- Jauge+ `0.10.1` : la jauge se rafraîchit toutes les 15 s pendant une longue réponse, et « dernier échange » suit chaque appel d'outil.
+- Fil `0.12.1` : une barre par routine planifiée (Planificateur de tâches Windows), lue dans ses journaux via `~/.claude/fil-routines.json`, sans rien y écrire.
+
 ## 1.0.4 : 2026-11-04
 - Jauge+ `0.10.0` : un « Relais prêt » écrit par Claude en fin de passation lance seul le contrôle, le vidage du chat et la reprise ; la reprise enchaîne la tâche sans attendre ton accord ; la section « Demandes ouvertes » est acceptée.
 - Cap `0.9.0` : la question de fin « Et maintenant, on fait quoi ? » est désactivée par défaut et se rallume avec `/cap question on`.

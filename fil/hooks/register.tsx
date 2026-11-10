@@ -71,6 +71,73 @@ async function lireSiChange($: EngineInterface, nomFichier: string, mtime: numbe
   return valeur
 }
 
+// Routines planifiées (Planificateur de tâches Windows) : Fil lit leurs journaux, sans
+// rien y écrire ni rien changer à la routine. Liste dans ~/.claude/fil-routines.json :
+// [{ "nom": "Ma routine", "dossier": "<dossier des log-nuit-*.txt>" }]
+// Une routine écrit « MM/JJ/AAAA HH:MM:SS début … » puis « … fin, code N ».
+type Routine = { nom: string; dossier: string }
+// La sortie de Claude y est en UTF-16 (caractères nuls) : on les retire, et on tolère
+// un BOM ou un reste d'octet avant la date.
+const LIGNE_LOG = /^\D{0,3}(\d\d)\/(\d\d)\/(\d{4}) (\d\d):(\d\d):(\d\d) (.*)$/
+
+export function lireLog(texte: string) {
+  let debut = 0
+  let finA: number | undefined
+  let code = 0
+  for (const l of texte.replace(/\0/g, '').split(/\r?\n/)) {
+    const m = LIGNE_LOG.exec(l)
+    if (!m) continue
+    const quand = new Date(+m[3]!, +m[1]! - 1, +m[2]!, +m[4]!, +m[5]!, +m[6]!).getTime()
+    const fin = /fin, code (-?\d+)/.exec(m[7]!)
+    // « début » peut arriver mal encodé (« dÃ©but ») : on ne lit que d…but.
+    if (fin && debut) {
+      finA = quand
+      code = +fin[1]!
+    } else if (!fin && /^d\S{0,3}but\b/.test(m[7]!)) {
+      debut = quand
+      finA = undefined
+      code = 0
+    }
+  }
+  return debut ? { debut, finA, code } : null
+}
+
+async function lireRoutines($: EngineInterface, now: number, t: Taches) {
+  if (!dossier) return
+  const liste = await lireJson($, dossier.replace(/fil-sessions$/, 'fil-routines.json'))
+  if (!Array.isArray(liste)) return
+  for (const r of liste as Routine[]) {
+    try {
+      const f = (await $.fs.list(r.dossier))
+        .filter(x => x.kind === 'file' && /^log-nuit-.*\.txt$/.test(x.name) && now - x.mtimeMs < GARDE_FINI)
+        .sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
+      if (!f) continue
+      const chemin = `${r.dossier}/${f.name}`
+      let c = lus.get(chemin)
+      if (!c || c.mtime !== f.mtimeMs) {
+        c = { mtime: f.mtimeMs, valeur: lireLog(await $.fs.read(chemin)) }
+        lus.set(chemin, c)
+      }
+      const x = c.valeur as ReturnType<typeof lireLog>
+      // Sans « fin » depuis 12 h : plantée ou PC éteint, on n'affiche plus.
+      if (!x || (x.finA === undefined && now - x.debut > GARDE_FINI)) continue
+      t[`routine-${r.nom}`] = {
+        titre: '',
+        total: 0,
+        faits: 0,
+        outil: x.finA ? '' : 'Routine',
+        debut: x.debut,
+        maj: x.finA ?? now,
+        agents: {},
+        nom: x.code ? `${r.nom} · ERREUR code ${x.code}` : r.nom,
+        tour: { debut: x.debut, finA: x.finA },
+      }
+    } catch {
+      // routine absente ou illisible : on l'ignore
+    }
+  }
+}
+
 async function lireTout($: EngineInterface, ici: string, now: number): Promise<Taches> {
   const t: Taches = {}
   if (mien) t[ici] = mien
@@ -92,6 +159,7 @@ async function lireTout($: EngineInterface, ici: string, now: number): Promise<T
   } catch {
     return t
   }
+  await lireRoutines($, now, t)
   for (const [id, x] of Object.entries(t)) {
     const fa = fermes[`${id}:agents`]
     t[id] = {
@@ -104,10 +172,7 @@ async function lireTout($: EngineInterface, ici: string, now: number): Promise<T
   return t
 }
 
-const agentsFinis = (t: Tache) => {
-  const a = Object.values(t.agents ?? {})
-  return a.length > 0 && a.every(x => x.finA) ? Math.max(...a.map(x => x.finA ?? 0)) : 0
-}
+const agentsEnCours = (t: Tache) => Object.values(t.agents ?? {}).some(a => !a.finA)
 
 // Retire ce qui est fini depuis 12 h et ce qui est abandonné depuis 2 h.
 function nettoyer(t: Taches, now: number): Taches {
@@ -184,12 +249,14 @@ async function synchroniser($: EngineInterface) {
   if (x) {
     const sons = ((await $.store.get('sons')) as Record<string, number> | undefined) ?? {}
     const tourFini = x.total === 0 && x.tour?.finA && x.tour.finA - x.tour.debut >= TOUR_LONG ? x.tour.finA : 0
+    // Les sous-agents ne sonnent jamais : seuls la fin de TA tâche et une vraie question sonnent.
+    // Tant qu'un sous-agent tourne, la tâche n'est pas finie : la fin attend qu'il ait rendu.
+    const occupe = agentsEnCours(x)
     let son = ''
     for (const [cle, quand, asset] of [
-      [ici, x.finiA ?? 0, 'fx/fin.mp3'],
-      [`${ici}:agents`, agentsFinis(x), 'fx/fin.mp3'],
-      [`${ici}:tour`, tourFini, 'fx/fin.mp3'],
-      [`${ici}:attente`, x.attente ?? 0, 'fx/attente.mp3'],
+      [ici, occupe ? 0 : (x.finiA ?? 0), 'fx/fin.mp3'],
+      [`${ici}:tour`, occupe ? 0 : tourFini, 'fx/fin.mp3'],
+      [`${ici}:attente`, occupe ? 0 : (x.attente ?? 0), 'fx/attente.mp3'],
       [`${ici}:question`, x.question ?? 0, 'fx/attente.mp3'],
     ] as const) {
       if (quand && sons[cle] !== quand && now - quand < 60_000) {
@@ -611,6 +678,8 @@ export const register: Register = on => {
       if (typeof a.start === 'number') marquer(a.start - 1, 'in_progress')
       await publierPlan($, etapes)
     } else if (e.tool === 'mcp__ccd_turn__wrap_up' && etapes.length) {
+      // Fin bloquée sur ta réponse : c'est une vraie question, le son d'attente remplace celui de fin.
+      if (a.blocked === true) mien = mien && { ...mien, question: await $.clock.now() }
       etapes = etapes.map(x => ({ ...x, statut: 'completed' }))
       await publierPlan($, etapes)
     } else if (e.tool === 'TodoWrite') {
@@ -636,7 +705,8 @@ export const register: Register = on => {
     const agentId = e.agentId
     if (!agentId) {
       // La réponse s'arrête avant la fin de la liste : Claude attend la tienne.
-      await modifier($, (x, now) => ({
+      // Sauf si un sous-agent tourne encore : Claude attend le sous-agent, pas toi.
+      await modifier($, (x, now) => agentsEnCours(x) ? { ...x, outil: '' } : ({
         ...x,
         tour: x.tour ? { ...x.tour, finA: x.tour.finA ?? now } : x.tour,
         outil: '',

@@ -431,8 +431,14 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'jauge', description: 'Jauge+ : seuil du relais et relais manuel (/jauge aide)' })
     await mesurer($, await $.session.usage())
-    // Rafraîchit « dernier échange il y a … » chaque seconde.
-    $.clock.every(1000, () => $.ui.invalidate('ui.render'))
+    // Rafraîchit « dernier échange il y a … » chaque seconde, et relit le contexte toutes
+    // les 15 s : l'app n'envoie sa mesure qu'en fin de réponse, la jauge restait figée
+    // pendant une longue réponse. Le relais, lui, reste déclenché par la mesure de l'app.
+    let ticks = 0
+    $.clock.every(1000, () => {
+      if (++ticks % 15 === 0) void $.session.usage().then(u => mesurer($, u)).catch(() => undefined)
+      $.ui.invalidate('ui.render')
+    })
     return next(e)
   })
 
@@ -463,9 +469,20 @@ export const register: Register = on => {
   // écrit pendant le contrôle du relais.
   on('turn.start', async ($, e, next) => {
     const res = await next(e)
-    if (!e.agentId) toursDemarres++
+    if (!e.agentId) {
+      toursDemarres++
+      await update($, dernierEchange, () => Date.now())
+    }
     return res
   })
+
+  // Chaque appel d'outil de la conversation passe par le modèle et rafraîchit le cache :
+  // « dernier échange » suit, au lieu d'attendre la fin de la réponse.
+  on('tool.call', async ($, e, next) => {
+    const res = await next(e)
+    if (!e.agentId) await update($, dernierEchange, () => Date.now())
+    return res
+  }).catch(($, e, next) => next(e))
 
   on('turn.complete', async ($, e, next) => {
     const res = await next(e)

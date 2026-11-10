@@ -221,6 +221,49 @@ test('une question sonne aussi après une liste finie, ou sans liste', async ($,
   expect(w.sons.filter(s => s === 'fx/attente.mp3')).toHaveLength(2)
 })
 
+test('les sous-agents ne sonnent jamais, et Claude qui les attend n’est pas « à toi »', async ($, on) => {
+  const w = monde(on)
+  w.ecrire('A', {
+    titre: '', total: 0, faits: 0, outil: '', debut: T0, maj: T0, nom: '01-business',
+    agents: { ag1: { n: 1, desc: 'Chercher', modele: 'haiku 5.5', debut: T0 - 5_000, outil: 'Lecture' } },
+  })
+  await demarrer($)
+  await $.turn.start({ text: '', turnId: 't1' } as never)
+  await $.tool.call(plan(['completed', 'in_progress', 'pending']))
+  await w.horloge.advance(60_000)
+  await $.turn.complete({ answer: 'J’attends le sous-agent.', durationMs: 60_000, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+  expect(JSON.parse(w.fichiers.get(`${DOSSIER}/A.json`)!.texte).attente).toBeUndefined()
+  expect(await dessin($)).not.toContain('à toi')
+  await $.turn.complete({ answer: 'fini', durationMs: 5000, isAborted: false, turnId: 'x', reason: 'answer', agentId: 'ag1' } as never)
+  expect(w.sons).toEqual([])
+})
+
+test('une fin bloquée sur ta réponse sonne l’attente, pas la fin', async ($, on) => {
+  const w = monde(on)
+  await demarrer($)
+  await $.turn.start({ text: '', turnId: 't1' } as never)
+  await $.tool.call(plan(['completed', 'in_progress']))
+  await $.tool.call({ tool: 'mcp__ccd_turn__wrap_up', recap: 'r', ask: 'On publie ?', blocked: true } as never)
+  expect(w.sons).toEqual(['fx/attente.mp3'])
+})
+
+test('une routine planifiée s’affiche depuis son journal, sans y écrire', async ($, on) => {
+  const w = monde(on)
+  const LOGS = 'C:/routines/logs'
+  w.fichiers.set(`${HOME}/.claude/fil-routines.json`, { texte: JSON.stringify([{ nom: 'Ma routine', dossier: LOGS }]), mtime: T0 })
+  const d = new Date(T0 - 10 * 60_000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  const h = `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  w.fichiers.set(`${LOGS}/log-nuit-x.txt`, { texte: `${h} dÃ©but, C:/claude.exe\n`, mtime: T0 - 10 * 60_000 })
+  await demarrer($)
+  expect(await dessin($)).toContain('Ma routine')
+  expect(await dessin($)).toContain('Réponse en cours')
+  w.fichiers.set(`${LOGS}/log-nuit-x.txt`, { texte: `${h} dÃ©but, C:/claude.exe\nsortie\n${h} fin, code 0\n`, mtime: T0 + 1 })
+  await w.horloge.advance(2_000)
+  expect(await dessin($)).toContain('Réponse terminée')
+  expect([...w.fichiers.keys()].filter(k => k.startsWith(LOGS))).toEqual([`${LOGS}/log-nuit-x.txt`])
+})
+
 test('un employé qui escalade vers son supérieur est signalé en ambre', async ($, on) => {
   const w = monde(on)
   w.ecrire('A', {

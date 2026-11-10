@@ -16,7 +16,7 @@ export const REPERES = [
   'Prochaine action',
   'Ne pas refaire',
   '## Objectif',
-  // « ## Demandes de l'utilisateur » (consigne du mod) ou « ## Demandes ouvertes » (CLAUDE.md de l'AIOS).
+  // « ## Demandes de l'utilisateur » (consigne du mod) ou « ## Demandes ouvertes » (CLAUDE.md de l'utilisateur).
   '## Demandes',
   '## Décidé',
   '## Pièges déjà rencontrés',
